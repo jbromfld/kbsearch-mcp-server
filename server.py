@@ -1,35 +1,13 @@
-from fastmcp import FastMCP
-from pydantic_ai import Agent
-import requests
+from mcp.server import Server
+from mcp_server.registry import register_tools
+from dotenv import load_dotenv
+import os
 
-mcp = FastMCP("My MCP Server")
+load_dotenv()
 
-@mcp.tool
-def greet(name: str) -> str:
-    return f"Hello, {name}!"
+server = Server(os.getenv("MCP_SERVER_NAME", "ci-knowledge-mcp"))
 
-
-@mcp.tool
-def search(query: str) -> str:
-    url = "http://localhost:8000/query"
-    headers = {"Content-Type": "application/json"}
-    data = {"query": query}
-    response = requests.post(url, headers=headers, json=data)
-    result = response.json()
-    
-    # Extract and format the answer
-    answer = result.get("answer", "No answer found")
-    sources = result.get("sources", [])
-    
-    # Format the response
-    formatted = answer
-    if sources:
-        formatted += "\n\nSources:\n"
-        for i, source in enumerate(sources, 1):
-            formatted += f"{i}. {source.get('title', 'Unknown')} - {source.get('url', 'No URL')}\n"
-    
-    return formatted
+register_tools(server)
 
 if __name__ == "__main__":
-    mcp.run()
-    # mcp.run(transport="http", port=8088)
+    server.run()
