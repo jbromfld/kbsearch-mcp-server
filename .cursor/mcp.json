@@ -1,0 +1,15 @@
+{
+    "mcpServers": {
+        "local-kbsearch-server": {
+            "command": "/Users/jbromfield/workspace/kbsearch-mcp/.venv/bin/python",
+            "args": [
+                "/Users/jbromfield/workspace/kbsearch-mcp/server.py"
+            ],
+            "description": "A set of tools that you can use to search the KB"
+        },
+        "jbromfield": {
+            "url": "https://jbromfield.fastmcp.app/mcp",
+            "headers": {}
+        }
+    }
+}
