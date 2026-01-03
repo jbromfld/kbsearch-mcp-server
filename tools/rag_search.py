@@ -18,6 +18,13 @@ When to use:
 - Use this tool when factual accuracy matters.
 - Use this tool to query ingested documentation (Python docs, React docs, etc).
 
+Example queries:
+- "Describe how authentication works in this system"
+- "How do I configure the deployment pipeline?"
+- "What is the recommended approach for error handling?"
+- "Explain the database migration process"
+- "Where can I find the API documentation?"
+
 What it returns:
 - Retrieved document chunks with citations [1], [2], etc.
 - Source URLs and relevance scores for each chunk

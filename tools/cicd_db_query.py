@@ -17,6 +17,13 @@ When to use:
 - Use this tool when answering questions about the CI/CD pipeline.
 - Use this tool when answering questions about the CI/CD database.
 
+Example queries:
+- "What was the last successful build for project X?"
+- "Where were the failures in the deployment pipeline yesterday?"
+- "Show me all builds that failed in the last week"
+- "How many tests passed in the latest CI run?"
+- "Which branches have failing builds?"
+
 Output:
 - Returns database query results with the generated SQL."""
     )
