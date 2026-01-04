@@ -1,6 +1,7 @@
 services:
   mcp-server:
     build: .
+    container_name: kbsearch-mcp-server
     ports:
       - "8080:8080"
     env_file:

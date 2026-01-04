@@ -8,33 +8,47 @@ load_dotenv()
 RAG_URL = os.getenv("RAG_SERVICE_URL", "http://localhost:8000/query")
 RAG_TIMEOUT = int(os.getenv("RAG_TIMEOUT", "30"))
 
+
 def register(mcp):
     @mcp.tool(
         name="search_knowledge_base",
         description="""Search the internal knowledge base and retrieve relevant document chunks.
 
-When to use:
-- Use this tool before answering any technical, procedural, or "how-to" question.
-- Use this tool when factual accuracy matters.
-- Use this tool to query ingested documentation (Python docs, React docs, etc).
+        CRITICAL CONSTRAINT:
+        - DO NOT answer factual questions from your general knowledge without calling this tool first
+        - ALWAYS check the knowledge base before answering questions about technical topics, products, systems, tools, or "What is X?" questions
+        - Only answer from general knowledge if this tool returns "No relevant information found"
 
-Example queries:
-- "Describe how authentication works in this system"
-- "How do I configure the deployment pipeline?"
-- "What is the recommended approach for error handling?"
-- "Explain the database migration process"
-- "Where can I find the API documentation?"
+        When to use:
+        - ANY question that could be answered by internal documentation or knowledge
+        - Questions about technical topics, systems, tools, frameworks, products, or services
+        - "What is X?" or "Describe X" questions where X might be in the knowledge base
+        - Technical, procedural, onboarding, or "how-to" questions
+        - Questions requiring factual accuracy about specific technologies or processes
+        - Queries about ingested documentation (Python, Java, JavaScript, NPM, Maven, AKS, AEM, CI/CD, continuous delivery, infrastructure, etc)
 
-What it returns:
-- Retrieved document chunks with citations [1], [2], etc.
-- Source URLs and relevance scores for each chunk
-- Performance metrics (latency, chunks retrieved)
+        Example queries that MUST use this tool:
+        - "What is Mistral-3?" (could be a documented system/tool/model)
+        - "Describe how authentication works in this system"
+        - "How do I configure the deployment pipeline?"
+        - "What is the recommended approach for error handling?"
+        - "Explain the database migration process"
+        - "Where can I find the API documentation?"
+        - "What is the onboarding process for AKS deployment?"
 
-How to use the results:
-- Read and synthesize information from the retrieved chunks
-- Use the content to answer the user's question accurately
-- Cite sources using the [1], [2] format provided
-- If no relevant chunks are returned (num_chunks=0), tell the user no information was found"""
+        What it returns:
+        - Retrieved document chunks with citations [1], [2], etc.
+        - Source URLs and relevance scores for each chunk
+        - Performance metrics (latency, chunks retrieved)
+
+        How to use the results:
+        - Read and synthesize information from the retrieved chunks to answer the user's question
+        - MANDATORY: After your answer, copy the ENTIRE SOURCES section verbatim from the tool output, including all URLs
+        - DO NOT summarize or paraphrase the sources - copy them exactly as provided with full URLs
+        - Use inline citations [1], [2] in your answer that match the source numbers
+        - ALWAYS preserve the Query ID line for potential feedback submission
+        - If no relevant chunks are returned (num_chunks=0), explicitly state: "I couldn't find this in the internal knowledge base, so I'll answer from my general knowledge:" before providing your answer
+        """
     )
     def search_knowledge_base(
         query: str,
@@ -134,18 +148,24 @@ How to use the results:
         name="submit_feedback",
         description="""Submit feedback on a RAG query response.
 
-When to use:
-- After receiving an answer from search_knowledge_base
-- When the user rates the quality of an answer
-- To help improve retrieval quality over time
+        When to use:
+        - When the user provides a rating or feedback on a previous answer (e.g., "Rating 7", "Rate this 8/10", "Score: 5 - needs better sources")
+        - Parse the user's natural language into score (0-10) and optional comment
+        - Use the query_id from the most recent search_knowledge_base response
 
-Parameters:
-- query_id: The query_id returned from search_knowledge_base
-- score: Rating from 0-10 (0=terrible, 10=perfect)
-- comment: Optional text feedback
+        Parameters:
+        - query_id: The query_id from the search_knowledge_base response (shown in the Query ID line)
+        - score: Rating from 0-10 extracted from user's feedback (0=terrible, 10=perfect)
+        - comment: Any additional feedback text from the user
 
-Output:
-- Confirmation that feedback was recorded"""
+        Examples of user feedback to parse:
+        - "Rating 7. Needs to add links" → score=7, comment="Needs to add links"
+        - "Rate this 9/10" → score=9, comment=""
+        - "Score: 3 - not relevant" → score=3, comment="not relevant"
+        - "10 out of 10, perfect!" → score=10, comment="perfect!"
+
+        Output:
+        - Confirmation that feedback was recorded"""
     )
     def submit_feedback(
         query_id: str,
