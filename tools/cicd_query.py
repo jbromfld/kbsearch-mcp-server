@@ -8,7 +8,7 @@ Refactored to use two-phase NL2SQL with distributed caching:
 
 import os
 import requests
-from typing import Dict, Any
+from typing import Dict, Any, List
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -20,6 +20,100 @@ NL2SQL_TIMEOUT = int(os.getenv("NL2SQL_TIMEOUT", "30"))  # Increased for LLM gen
 
 # Optional: User identification for cache attribution
 USER_ID = os.getenv("USER_ID", "unknown")
+
+
+def _add_summary_stats(results: List[Dict]) -> Dict[str, Any]:
+    """Add summary statistics based on result type"""
+    if not results:
+        return {}
+
+    first_row = results[0]
+
+    # Deployment stats
+    if 'deploy_result' in first_row:
+        total = len(results)
+        successes = sum(1 for r in results if r.get('deploy_result') == 'SUCCESS')
+        failures = sum(1 for r in results if r.get('deploy_result') == 'FAILURE')
+        success_rate = round((successes / total * 100) if total > 0 else 0, 1)
+
+        return {
+            "type": "deployment",
+            "total": total,
+            "successes": successes,
+            "failures": failures,
+            "success_rate": f"{success_rate}%"
+        }
+
+    # Test stats
+    elif 'tests_passed' in first_row or 'test_type' in first_row:
+        total_tests = sum(r.get('tests_passed', 0) + r.get('tests_failed', 0) for r in results)
+        total_passed = sum(r.get('tests_passed', 0) for r in results)
+        total_failed = sum(r.get('tests_failed', 0) for r in results)
+        pass_rate = round((total_passed / total_tests * 100) if total_tests > 0 else 0, 1)
+
+        return {
+            "type": "test",
+            "test_runs": len(results),
+            "total_tests": total_tests,
+            "passed": total_passed,
+            "failed": total_failed,
+            "pass_rate": f"{pass_rate}%"
+        }
+
+    # Generic
+    return {"type": "generic", "row_count": len(results)}
+
+
+def _format_as_readable_list(results: List[Dict], summary: Dict[str, Any]) -> str:
+    """Format results as readable bullet points with proper spacing"""
+    if not results:
+        return "No results found."
+
+    result_type = summary.get("type", "generic")
+    lines = []
+
+    # Add summary header
+    if result_type == "deployment":
+        lines.append(f"**Found {summary['total']} deployments: {summary['successes']} successful, {summary['failures']} failed ({summary['success_rate']} success rate)**\n")
+
+        for i, r in enumerate(results, 1):
+            date_str = str(r.get('date', 'N/A'))[:16] if r.get('date') else 'N/A'
+            result_icon = "✓" if r.get('deploy_result') == 'SUCCESS' else "✗"
+            lines.append(f"{i}. **{r.get('app_name', 'N/A')}** {r.get('app_version', 'N/A')}")
+            lines.append(f"   - Environment: {r.get('deploy_env', 'N/A')}")
+            lines.append(f"   - Result: {result_icon} {r.get('deploy_result', 'N/A')}")
+            lines.append(f"   - Date: {date_str}")
+            lines.append(f"   - Deployed by: {r.get('deployed_by', 'N/A')}")
+            lines.append("")  # Blank line between entries
+
+    elif result_type == "test":
+        lines.append(f"**Found {summary['test_runs']} test runs: {summary['total_tests']} total tests, {summary['passed']} passed, {summary['failed']} failed ({summary['pass_rate']} pass rate)**\n")
+
+        for i, r in enumerate(results, 1):
+            date_str = str(r.get('date', 'N/A'))[:16] if r.get('date') else 'N/A'
+            duration = r.get('test_duration_seconds', 0)
+            duration_str = f"{duration}s" if duration else "N/A"
+            has_failures = r.get('tests_failed', 0) > 0
+            result_icon = "✗" if has_failures else "✓"
+
+            lines.append(f"{i}. **{r.get('app_name', 'N/A')}** {r.get('app_version', 'N/A')}")
+            lines.append(f"   - Test Type: {r.get('test_type', 'N/A')}")
+            lines.append(f"   - Results: {result_icon} {r.get('tests_passed', 0)} passed, {r.get('tests_failed', 0)} failed, {r.get('tests_skipped', 0)} skipped")
+            lines.append(f"   - Duration: {duration_str}")
+            lines.append(f"   - Date: {date_str}")
+            lines.append("")  # Blank line between entries
+
+    else:
+        # Generic format
+        lines.append(f"**Found {summary.get('row_count', len(results))} results**\n")
+
+        for i, r in enumerate(results, 1):
+            lines.append(f"{i}. Result:")
+            for key, value in r.items():
+                lines.append(f"   - {key}: {value}")
+            lines.append("")  # Blank line between entries
+
+    return "\n".join(lines)
 
 
 def register(mcp):
@@ -49,6 +143,10 @@ def register(mcp):
         Outputs:
         - status="success" + results → Query complete, show results to user
         - status="needs_generation" → Generate SQL and call query_cicd_execute next
+
+        PRESENTATION INSTRUCTIONS:
+        The response includes a 'formatted_results' field with pre-formatted, readable results.
+        Simply display this field directly to the user - it's already formatted with proper spacing.
         """
     )
     def query_cicd_prepare(question: str) -> Dict[str, Any]:
@@ -79,15 +177,19 @@ def register(mcp):
             status = data.get("status")
             
             if status == "success":
-                # Cache hit - results ready
+                # Cache hit - return results with summary stats and formatted table
+                results = data.get("results", [])
+                summary = _add_summary_stats(results)
+                formatted_table = _format_as_readable_list(results, summary)
+
                 return {
                     "status": "success",
                     "cached": True,
-                    "results": data.get("results", []),
-                    "row_count": data.get("row_count", 0),
+                    "results": results,
+                    "summary": summary,
+                    "formatted_results": formatted_table,
                     "sql": data.get("sql"),
-                    "cache_key": data.get("cache_key"),
-                    "message": "Query results retrieved from cache"
+                    "message": "Query results retrieved from cache. Display the 'formatted_results' to the user."
                 }
             
             elif status == "needs_generation":
@@ -150,7 +252,7 @@ query_cicd_execute(
         except requests.exceptions.HTTPError as e:
             return {
                 "status": "error",
-                "error": f"CI/CD database service returned an error: {e.response.status_code}",
+                "error": f"CI/CD database service returned error: {e.response.status_code}",
                 "details": e.response.text if e.response else None
             }
         except requests.exceptions.RequestException as e:
@@ -178,12 +280,16 @@ query_cicd_execute(
 
         What it does:
         - Executes your SQL against the database
-        - Returns the query results
+        - Returns the query results with summary statistics
         - Caches the SQL pattern so future similar queries are instant
 
         Returns:
         - status="success" + results → Show results to user
         - status="error" → SQL had an error, review and fix
+
+        PRESENTATION INSTRUCTIONS:
+        The response includes a 'formatted_results' field with pre-formatted, readable results.
+        Simply display this field directly to the user - it's already formatted with proper spacing.
         """
     )
     def query_cicd_execute(
@@ -219,14 +325,19 @@ query_cicd_execute(
             status = data.get("status")
             
             if status == "success":
+                # Return results with summary stats and formatted table
+                results = data.get("results", [])
+                summary = _add_summary_stats(results)
+                formatted_table = _format_as_readable_list(results, summary)
+
                 return {
                     "status": "success",
-                    "results": data.get("results", []),
-                    "row_count": data.get("row_count", 0),
+                    "results": results,
+                    "summary": summary,
+                    "formatted_results": formatted_table,
                     "sql": data.get("sql"),
                     "cached": data.get("cached", False),
-                    "cache_key": data.get("cache_key"),
-                    "message": f"Query executed successfully. {'Cached for future use.' if data.get('cached') else ''}"
+                    "message": f"Query executed successfully. {'Cached for future use. ' if data.get('cached') else ''}Display the 'formatted_results' to the user."
                 }
             
             elif status == "error":
@@ -256,7 +367,7 @@ query_cicd_execute(
         except requests.exceptions.HTTPError as e:
             return {
                 "status": "error",
-                "error": f"CI/CD database service returned an error: {e.response.status_code}",
+                "error": f"CI/CD database service returned error: {e.response.status_code}",
                 "details": e.response.text if e.response else None
             }
         except requests.exceptions.RequestException as e:
