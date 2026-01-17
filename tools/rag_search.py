@@ -12,20 +12,28 @@ RAG_TIMEOUT = int(os.getenv("RAG_TIMEOUT", "30"))
 def register(mcp):
     @mcp.tool(
         name="search_knowledge_base",
-        description="""Search the internal knowledge base and retrieve relevant document chunks.
+        description="""⚠️ PRIMARY TOOL - Search the internal knowledge base for documentation.
 
-        CRITICAL CONSTRAINT:
-        - DO NOT answer factual questions from your general knowledge without calling this tool first
-        - ALWAYS check the knowledge base before answering questions about technical topics, products, systems, tools, or "What is X?" questions
-        - Only answer from general knowledge if this tool returns "No relevant information found"
+        ⚠️⚠️⚠️ CRITICAL CONSTRAINT ⚠️⚠️⚠️
+        - You MUST call this tool BEFORE answering ANY technical or factual question
+        - The knowledge base contains: Python docs, Java docs, JavaScript docs, NPM docs, Maven docs, AKS docs, CI/CD guides, deployment documentation, and more
+        - NEVER answer from general knowledge without checking the knowledge base first
+        - If you answer without calling this tool, you risk giving wrong information
 
-        When to use:
-        - ANY question that could be answered by internal documentation or knowledge
-        - Questions about technical topics, systems, tools, frameworks, products, or services
-        - "What is X?" or "Describe X" questions where X might be in the knowledge base
-        - Technical, procedural, onboarding, or "how-to" questions
-        - Questions requiring factual accuracy about specific technologies or processes
-        - Queries about ingested documentation (Python, Java, JavaScript, NPM, Maven, AKS, AEM, CI/CD, continuous delivery, infrastructure, etc)
+        📚 Knowledge Base Contains:
+        - Programming Language Documentation: Python (ALL modules, types, functions), Java, JavaScript
+        - Package Managers: NPM, Maven, pip
+        - Cloud & Infrastructure: Azure (AKS), AWS, deployment guides
+        - CI/CD: Continuous integration, continuous delivery, pipelines
+        - Development Tools: Git, Docker, Kubernetes
+        - Internal systems and processes
+
+        🎯 ALWAYS Use This Tool For:
+        - Programming questions (Python types, Java syntax, JavaScript APIs, etc.)
+        - "What is X?" questions about ANY technical topic
+        - "How do I..." questions about tools, frameworks, or systems
+        - Questions about deployment, CI/CD, infrastructure
+        - ANY question where documentation might exist
 
         Example queries that MUST use this tool:
         - "What is Mistral-3?" (could be a documented system/tool/model)
@@ -59,7 +67,7 @@ def register(mcp):
 
         Args:
             query: The question to ask
-            profile: Optional profile name (baseline-local, openai-gpt4o, claude-sonnet, bedrock-claude, copilot-gpt4o)
+            profile: Optional profile name (default: "default"). Available profiles can be queried from the RAG service.
             top_k: Number of relevant chunks to retrieve (default: 5)
 
         Returns:
@@ -73,12 +81,9 @@ def register(mcp):
             request_data = {
                 "query": query,
                 "top_k": top_k,
-                "retrieve_only": True  # Let Copilot synthesize from chunks
+                "retrieve_only": True,  # Let Copilot synthesize from chunks
+                "profile": profile or "default"  # Use 'default' profile if not specified
             }
-
-            # Add profile if specified (default is baseline-local)
-            if profile:
-                request_data["profile"] = profile
 
             resp = requests.post(
                 RAG_URL,

@@ -1,16 +1,12 @@
 {
 	"servers": {
-		"local-kbsearch-server": {
+		"local-mcp-server": {
 			"command": "/Users/jbromfield/workspace/kbsearch-mcp-server/.venv/bin/python",
 			"args": [
 				"/Users/jbromfield/workspace/kbsearch-mcp-server/server.py"
 			],
 			"description": "A set of tools that you can use to search the KB",
 			"type": "stdio"
-		},
-		"ci-knowledge-mcp": {
-			"url": "http://localhost:8080/mcp",
-			"type": "sse"
 		}
 	},
 	"inputs": []

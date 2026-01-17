@@ -13,7 +13,8 @@ services:
       - MCP_HTTP_PORT=8080
       # Override URLs to use host.docker.internal for host services
       - RAG_SERVICE_URL=http://host.docker.internal:8000/query
-      - NL2SQL_SERVICE_URL=http://host.docker.internal:8088/query
+      - NL2SQL_PREPARE_URL=http://host.docker.internal:8088/prepare
+      - NL2SQL_EXECUTE_URL=http://host.docker.internal:8088/execute
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped

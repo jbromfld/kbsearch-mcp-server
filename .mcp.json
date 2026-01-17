@@ -1,0 +1,10 @@
+{
+	"servers": {
+		"cicd-mcp": {
+			"url": "http://localhost:8080/mcp",
+			"type": "sse",
+			"description": "MCP server with RAG search and CI/CD query tools"
+		}
+	},
+	"inputs": []
+}
