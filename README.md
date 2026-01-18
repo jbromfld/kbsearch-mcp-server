@@ -1,8 +1,60 @@
-# kbsearch-mcp
+# CICD Tools MCP Server
 
-Minimal MCP (Model Context Protocol) server for local editor integrations.
+Minimal MCP (Model Context Protocol) server that provides two powerful tools for your development workflow:
 
-Quick start
+## 🔧 Available Tools
+
+### 1. Knowledge Base Search (RAG)
+**Tool:** `search_knowledge_base`
+
+Search through your organization's internal documentation and knowledge base using Retrieval-Augmented Generation (RAG). This tool:
+- Searches across ingested documentation (Python docs, Java docs, JavaScript docs, NPM, Maven, AKS, CI/CD guides, etc.)
+- Returns relevant chunks with citations and source URLs
+- Uses hybrid search (semantic + keyword) with quality boosting based on user feedback
+- Provides inline citations [1], [2] that you can reference in your answers
+- Includes Query ID for submitting feedback to improve future results
+
+**When to use:**
+- "What is [technical concept]?" questions
+- "How do I..." questions about tools, frameworks, or systems  
+- Finding API documentation or code examples
+- Questions about deployment, CI/CD, infrastructure
+- Any question where internal documentation might exist
+
+**Example queries:**
+- "What is the recommended approach for AKS deployment?"
+- "How do I configure the CI/CD pipeline?"
+- "Explain the authentication flow"
+
+### 2. CI/CD Database Query (NL2SQL)
+**Tools:** `query_cicd_prepare` and `query_cicd_execute`
+
+Convert natural language questions into SQL queries against your CI/CD database, with intelligent caching for instant responses. This two-step process:
+
+**Step 1: Prepare (`query_cicd_prepare`)**
+- Extracts query parameters (app name, environment, time range)
+- Checks if this query pattern is cached
+- If cached: returns results immediately
+- If not cached: returns schema + instructions for SQL generation
+
+**Step 2: Execute (`query_cicd_execute`)**  
+- Takes the generated SQL and executes it
+- Returns formatted results
+- Caches the query pattern for future use
+
+**When to use:**
+- Questions about deployments, test results, or CI/CD history
+- Time-based queries ("last week", "today", "last 5")
+- Application-specific queries ("frontend", "api-gateway")
+- Failure analysis and debugging
+
+**Example queries:**
+- "What was the last deployment for frontend to prod?"
+- "Show me failures in the last week"
+- "How many tests ran for api-gateway today?"
+- "List the last 5 deployments to staging"
+
+## Quick start
 - Create a Python venv and install deps:
 
 	python -m venv .venv
