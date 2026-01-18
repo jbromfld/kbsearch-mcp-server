@@ -2,7 +2,7 @@
 # Each line is a file pattern followed by one or more owners.
 
 # Default owner for everything in the repo
-* @jbromfield
+* @jbromfld
 
 # You can specify multiple owners
 # /docs/ @jbromfield @team-docs
