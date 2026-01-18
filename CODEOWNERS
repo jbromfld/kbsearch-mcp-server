@@ -1,0 +1,16 @@
+# CODEOWNERS file for kbsearch-mcp-server
+# Each line is a file pattern followed by one or more owners.
+
+# Default owner for everything in the repo
+* @jbromfld
+
+# You can specify multiple owners
+# /docs/ @jbromfield @team-docs
+
+# Owners for specific file types
+# *.py @jbromfield @python-team
+# *.ts @jbromfield @typescript-team
+
+# Owners for specific directories
+# /src/ @jbromfield
+# /tests/ @jbromfield @qa-team
