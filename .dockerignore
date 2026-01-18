@@ -10,8 +10,8 @@ venv/
 ENV/
 env/
 
-# Environment
-.env
+# # Environment
+# .env
 
 # Git
 .git/

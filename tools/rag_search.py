@@ -103,12 +103,31 @@ def register(mcp):
                 for chunk in chunks
             ])
 
-            # Format sources separately for clear citation
+            # Format sources separately for clear citation - deduplicate by URL
+            seen_sources = {}
+            for chunk in chunks:
+                url = chunk.get('url', '')
+                title = chunk['title']
+                score = chunk['score']
+                citation = chunk['citation']
+                
+                # Use URL as key for deduplication, or title if no URL
+                key = url if url else title
+                
+                # Keep the highest relevance score for each unique source
+                if key not in seen_sources or score > seen_sources[key]['score']:
+                    seen_sources[key] = {
+                        'citation': citation,
+                        'title': title,
+                        'url': url,
+                        'score': score
+                    }
+            
             sources_list = "\n".join([
-                f"{chunk['citation']} {chunk['title']}" +
-                (f" - {chunk['url']}" if chunk.get('url') else "") +
-                f" (relevance: {chunk['score']:.3f})"
-                for chunk in chunks
+                f"{src['citation']} {src['title']}" +
+                (f" - {src['url']}" if src['url'] else "") +
+                f" (relevance: {src['score']:.3f})"
+                for src in seen_sources.values()
             ])
 
             metrics = data.get("metrics", {})
