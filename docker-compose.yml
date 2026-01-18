@@ -1,0 +1,26 @@
+services:
+  mcp-server:
+    build: .
+    container_name: kbsearch-mcp-server
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      # Transport mode: http or stdio
+      - MCP_TRANSPORT=http
+      - MCP_HTTP_HOST=0.0.0.0
+      - MCP_HTTP_PORT=8080
+      # Override URLs to use host.docker.internal for host services
+      - RAG_SERVICE_URL=http://host.docker.internal:8000/query
+      - NL2SQL_PREPARE_URL=http://host.docker.internal:8088/prepare
+      - NL2SQL_EXECUTE_URL=http://host.docker.internal:8088/execute
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+networks:
+  mcp-network:
+    driver: bridge

@@ -1,0 +1,178 @@
+# ============================================================================
+# Unified Docker Compose for Complete MCP Demo System
+# ============================================================================
+# This file orchestrates all three services:
+# 1. PostgreSQL (with pgvector) - Single database instance for both services
+# 2. RAG MCP Service (port 8000) - Knowledge base search with pgvector
+# 3. NL2SQL Service (port 8088) - Natural language to SQL queries
+# 4. MCP Server (port 8080) - Main MCP server exposing both tools
+#
+# Usage:
+#   docker-compose -f docker-compose-all.yml up -d
+#   docker-compose -f docker-compose-all.yml logs -f
+#   docker-compose -f docker-compose-all.yml down
+# ============================================================================
+
+services:
+  # ==========================================================================
+  # PostgreSQL with pgvector extension
+  # Hosts both databases: rag_service and cicd_service
+  # ==========================================================================
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: demo-postgres
+    environment:
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_INITDB_ARGS: -E UTF8
+    ports:
+      - "5434:5432"  # Map to 5434 to avoid conflict with local PostgreSQL
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testuser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mcp-demo-network
+    restart: unless-stopped
+
+  # ==========================================================================
+  # RAG Service - Knowledge Base Search with Vector Embeddings
+  # Port: 8000
+  # ==========================================================================
+  rag-service:
+    build:
+      context: ../rag-mcp
+      dockerfile: Dockerfile
+    container_name: demo-rag-service
+    environment:
+      # Database connection
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=rag_service
+      - POSTGRES_USER=testuser
+      - POSTGRES_PASSWORD=testpass
+
+      # Embedding & LLM Configuration
+      - EMBEDDING_PROVIDER=local
+      - LOCAL_EMBEDDING_MODEL=sentence-transformers/all-mpnet-base-v2
+      - LLM_PROVIDER=ollama
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OLLAMA_MODEL=qwen2.5
+
+      # Optional: Cloud provider keys (if not using local)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - COPILOT_API_KEY=${COPILOT_API_KEY:-}
+
+      # App configuration
+      - ENVIRONMENT=docker
+      - LOG_LEVEL=INFO
+      - API_PORT=8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../rag-mcp:/app
+      - rag_embeddings_cache:/app/.cache
+    networks:
+      - mcp-demo-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000
+
+  # ==========================================================================
+  # NL2SQL Service - Natural Language to SQL Query Conversion
+  # Port: 8088
+  # ==========================================================================
+  nl2sql-service:
+    build:
+      context: ../nl2sql-mcp
+      dockerfile: Dockerfile
+    container_name: demo-nl2sql-service
+    environment:
+      - DATABASE_URL=postgresql://testuser:testpass@postgres:5432/cicd_service
+      - PORT=8088
+      - DEBUG=False
+      - PYTHONPATH=/app
+    ports:
+      - "8088:8088"
+    networks:
+      - mcp-demo-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    working_dir: /app/app
+    command: uvicorn api_server:app --host 0.0.0.0 --port 8088
+
+  # ==========================================================================
+  # MCP Server - Main Server Exposing Knowledge Base and CI/CD Query Tools
+  # Port: 8080
+  # ==========================================================================
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: demo-mcp-server
+    environment:
+      # Transport configuration
+      - MCP_TRANSPORT=http
+      - MCP_HTTP_HOST=0.0.0.0
+      - MCP_HTTP_PORT=8080
+      - MCP_SERVER_NAME=demo-mcp
+
+      # Backend service URLs (using Docker service names)
+      - RAG_SERVICE_URL=http://rag-service:8000/query
+      - NL2SQL_PREPARE_URL=http://nl2sql-service:8088/prepare
+      - NL2SQL_EXECUTE_URL=http://nl2sql-service:8088/execute
+
+      # Timeouts
+      - RAG_TIMEOUT=30
+      - NL2SQL_TIMEOUT=30
+
+      # Optional: User identification
+      - USER_ID=demo-user
+    ports:
+      - "8080:8080"
+    networks:
+      - mcp-demo-network
+    depends_on:
+      - rag-service
+      - nl2sql-service
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/mcp"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  mcp-demo-network:
+    driver: bridge
+    name: mcp-demo-network
+
+# ============================================================================
+# Volumes
+# ============================================================================
+volumes:
+  postgres_data:
+    driver: local
+    name: mcp-demo-postgres-data
+  rag_embeddings_cache:
+    driver: local
+    name: mcp-demo-embeddings-cache
