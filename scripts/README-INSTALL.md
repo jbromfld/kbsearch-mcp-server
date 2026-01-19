@@ -5,14 +5,13 @@ Quick setup for adding the CI/CD MCP server to VS Code.
 ## One-Line Install (macOS)
 
 ```bash
-curl -fsSL https://github.com/jbromfld/kbsearch-mcp-server/develop/install-mcp.sh | bash
+curl -fsSL https://raw.githubusercontent.com/jbromfld/kbsearch-mcp-server/develop/scripts/mcp_installer.sh | bash
 ```
-
 ## Alternative: Download and Run
 
 ```bash
 # Download the script
-curl -fsSL https://github.com/jbromfld/kbsearch-mcp-server/develop/install-mcp.sh -o install-mcp.sh
+curl -fsSL https://raw.githubusercontent.com/jbromfld/kbsearch-mcp-server/develop/scripts/mcp_installer.sh -o install-mcp.sh
 
 # Make it executable
 chmod +x install-mcp.sh
@@ -34,7 +33,7 @@ The installer will:
 
 ```json
 {
-  "mcpServers": {
+  "servers": {
     "cicd-mcp": {
       "url": "http://localhost:8080/mcp",
       "type": "sse",
@@ -74,7 +73,7 @@ curl http://localhost:8080/health
 
 ```bash
 # View your MCP configuration
-cat "$HOME/Library/Application Support/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/cline_mcp_settings.json" | jq .
+cat "$HOME/Library/Application Support/Code/User/mcp.json" | jq .
 ```
 
 ## Uninstall
@@ -127,24 +126,24 @@ If the script doesn't work for your platform, manually edit your MCP settings fi
 
 **VS Code (macOS):**
 ```
-~/Library/Application Support/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/cline_mcp_settings.json
+~/Library/Application Support/Code/User/mcp.json
 ```
 
 **VS Code (Linux):**
 ```
-~/.config/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/cline_mcp_settings.json
+~/.config/Code/User/mcp.json
 ```
 
 **VS Code (Windows):**
 ```
-%APPDATA%\Code\User\globalStorage\rooveterinaryinc.roo-cline\settings\cline_mcp_settings.json
+%APPDATA%\Code\User\mcp.json
 ```
 
 Add this configuration:
 
 ```json
 {
-  "mcpServers": {
+  "servers": {
     "cicd-mcp": {
       "url": "http://localhost:8080/mcp",
       "type": "sse",
@@ -153,49 +152,4 @@ Add this configuration:
   },
   "inputs": []
 }
-```
-
-## Support
-
-For issues or questions:
-
-- 📖 [Documentation](https://github.com/YOUR-ORG/YOUR-REPO)
-- 🐛 [Report a bug](https://github.com/YOUR-ORG/YOUR-REPO/issues)
-- 💬 [Discussions](https://github.com/YOUR-ORG/YOUR-REPO/discussions)
-
-## Advanced Usage
-
-### Install with custom server URL
-
-Edit the script before running:
-
-```bash
-# Download the script
-curl -fsSL https://raw.githubusercontent.com/YOUR-ORG/YOUR-REPO/main/install-mcp.sh -o install-mcp.sh
-
-# Edit the configuration
-nano install-mcp.sh
-
-# Find and modify:
-MCP_SERVER_URL="http://your-server:8080/mcp"
-
-# Run it
-chmod +x install-mcp.sh
-./install-mcp.sh
-```
-
-### Multiple MCP servers
-
-This installer only adds/updates the `cicd-mcp` server. Your existing MCP servers will not be affected.
-
-### Backup and restore
-
-Backups are automatically created with timestamps:
-
-```bash
-# List backups
-ls -la "$HOME/Library/Application Support/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/"*.backup.*
-
-# Restore from backup
-cp "cline_mcp_settings.json.backup.20241220_143022" cline_mcp_settings.json
 ```

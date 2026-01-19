@@ -24,7 +24,7 @@ MCP_SERVER_TYPE="sse"
 MCP_SERVER_DESCRIPTION="MCP server with RAG search and CI/CD query tools"
 
 # VS Code MCP settings path for macOS
-VSCODE_MCP_CONFIG="$HOME/Library/Application Support/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/cline_mcp_settings.json"
+VSCODE_MCP_CONFIG="$HOME/Library/Application Support/Code/User/mcp.json"
 
 # Helper functions
 log_info() {
@@ -87,7 +87,7 @@ install_with_jq() {
     
     # Initialize file if it doesn't exist
     if [ ! -f "$config_file" ]; then
-        echo '{"mcpServers":{},"inputs":[]}' > "$config_file"
+        echo '{"servers":{},"inputs":[]}' > "$config_file"
         log_info "Created new MCP settings file"
     fi
     
@@ -95,7 +95,7 @@ install_with_jq() {
     backup_config "$config_file"
     
     # Check if server already exists
-    if jq -e ".mcpServers.\"$MCP_SERVER_NAME\"" "$config_file" >/dev/null 2>&1; then
+    if jq -e ".servers.\"$MCP_SERVER_NAME\"" "$config_file" >/dev/null 2>&1; then
         log_warn "MCP server '$MCP_SERVER_NAME' already exists in configuration"
         read -p "Do you want to overwrite it? (y/N) " -n 1 -r
         echo
@@ -110,7 +110,7 @@ install_with_jq() {
        --arg url "$MCP_SERVER_URL" \
        --arg type "$MCP_SERVER_TYPE" \
        --arg desc "$MCP_SERVER_DESCRIPTION" \
-       '.mcpServers[$name] = {
+       '.servers[$name] = {
            "url": $url,
            "type": $type,
            "description": $desc
@@ -152,14 +152,14 @@ if os.path.exists(config_file):
     with open(config_file, 'r') as f:
         config = json.load(f)
 else:
-    config = {"mcpServers": {}, "inputs": []}
+    config = {"servers": {}, "inputs": []}
 
-# Ensure mcpServers exists
-if "mcpServers" not in config:
-    config["mcpServers"] = {}
+# Ensure servers exists
+if "servers" not in config:
+    config["servers"] = {}
 
 # Check if server already exists
-if server_name in config["mcpServers"]:
+if server_name in config["servers"]:
     print(f"WARNING: MCP server '{server_name}' already exists")
     response = input("Do you want to overwrite it? (y/N) ")
     if response.lower() != 'y':
@@ -167,7 +167,7 @@ if server_name in config["mcpServers"]:
         exit(0)
 
 # Add or update server
-config["mcpServers"][server_name] = server_config
+config["servers"][server_name] = server_config
 
 # Ensure inputs exists
 if "inputs" not in config:
@@ -200,7 +200,7 @@ install_with_sed() {
         cat <<EOF
 
 {
-  "mcpServers": {
+  "servers": {
     "$MCP_SERVER_NAME": {
       "url": "$MCP_SERVER_URL",
       "type": "$MCP_SERVER_TYPE",
@@ -214,7 +214,7 @@ EOF
         # Create new config file
         cat > "$config_file" <<EOF
 {
-  "mcpServers": {
+  "servers": {
     "$MCP_SERVER_NAME": {
       "url": "$MCP_SERVER_URL",
       "type": "$MCP_SERVER_TYPE",
@@ -261,7 +261,7 @@ show_next_steps() {
     echo "  $VSCODE_MCP_CONFIG"
     echo ""
     echo -e "${BLUE}To verify the configuration:${NC}"
-    echo -e "  ${YELLOW}cat \"$VSCODE_MCP_CONFIG\" | jq '.mcpServers.\"$MCP_SERVER_NAME\"'${NC}"
+    echo -e "  ${YELLOW}cat \"$VSCODE_MCP_CONFIG\" | jq '.servers.\"$MCP_SERVER_NAME\"'${NC}"
     echo ""
     echo -e "${BLUE}To remove this MCP server:${NC}"
     echo -e "  ${YELLOW}./install-mcp.sh --uninstall${NC}"
@@ -283,7 +283,7 @@ uninstall_mcp() {
     backup_config "$config_file"
     
     if has_jq; then
-        jq "del(.mcpServers.\"$MCP_SERVER_NAME\")" "$config_file" > "${config_file}.tmp" && \
+        jq "del(.servers.\"$MCP_SERVER_NAME\")" "$config_file" > "${config_file}.tmp" && \
             mv "${config_file}.tmp" "$config_file"
         log_success "MCP server '$MCP_SERVER_NAME' removed successfully!"
     elif command -v python3 >/dev/null 2>&1; then
@@ -292,8 +292,8 @@ import json
 config_file = "$config_file"
 with open(config_file, 'r') as f:
     config = json.load(f)
-if "mcpServers" in config and "$MCP_SERVER_NAME" in config["mcpServers"]:
-    del config["mcpServers"]["$MCP_SERVER_NAME"]
+if "servers" in config and "$MCP_SERVER_NAME" in config["servers"]:
+    del config["servers"]["$MCP_SERVER_NAME"]
     with open(config_file, 'w') as f:
         json.dump(config, f, indent=2)
     print("✓ MCP server '$MCP_SERVER_NAME' removed successfully!")

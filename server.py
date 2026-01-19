@@ -1,12 +1,14 @@
+import os
+import sys
+import uvicorn
 from fastmcp import FastMCP
 from registry import register_tools
 from dotenv import load_dotenv
-import os
-import sys
+
 
 load_dotenv()
 
-mcp = FastMCP(os.getenv("MCP_SERVER_NAME", "ci-knowledge-mcp"))
+mcp = FastMCP(os.getenv("MCP_SERVER_NAME", "cicd-mcp"))
 register_tools(mcp)
 
 if __name__ == "__main__":
@@ -22,7 +24,6 @@ if __name__ == "__main__":
 
         app = mcp.http_app()
 
-        import uvicorn
         uvicorn.run(app, host=host, port=port, log_level="info")
     else:
         print("Starting MCP server in STDIO mode", file=sys.stderr)
