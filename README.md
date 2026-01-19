@@ -54,6 +54,13 @@ Convert natural language questions into SQL queries against your CI/CD database,
 - "How many tests ran for api-gateway today?"
 - "List the last 5 deployments to staging"
 
+**Example VSCode integration**
+
+| Tool | Preview |
+|------|---------|
+| CICD tool | ![alt text](docs/cicd.png) |
+| Internal knowledge RAG tool | ![alt text](docs/kb.png) |
+
 ## Quick start
 - Create a Python venv and install deps:
 
