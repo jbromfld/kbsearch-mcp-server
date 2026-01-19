@@ -55,11 +55,11 @@ Convert natural language questions into SQL queries against your CI/CD database,
 - "List the last 5 deployments to staging"
 
 **Example VSCode integration**
-- Using CICD tool
-![alt text](docs/cicd.png)
 
-- Using internal knowledge RAG tool
-![alt text](docs/kb.png)
+| Tool | Preview |
+|------|---------|
+| CICD tool | ![alt text](docs/cicd.png) |
+| Internal knowledge RAG tool | ![alt text](docs/kb.png) |
 
 ## Quick start
 - Create a Python venv and install deps:
