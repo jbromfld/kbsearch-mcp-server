@@ -5,13 +5,13 @@ Quick setup for adding the CI/CD MCP server to VS Code.
 ## One-Line Install (macOS)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jbromfld/kbsearch-mcp-server/develop/scripts/mcp_installer.sh | bash
+curl -fsSL https://raw.githubusercontent.com/jbromfld/kbsearch-mcp-server/main/scripts/mcp_installer.sh | bash
 ```
 ## Alternative: Download and Run
 
 ```bash
 # Download the script
-curl -fsSL https://raw.githubusercontent.com/jbromfld/kbsearch-mcp-server/develop/scripts/mcp_installer.sh -o install-mcp.sh
+curl -fsSL https://raw.githubusercontent.com/jbromfld/kbsearch-mcp-server/main/scripts/mcp_installer.sh -o install-mcp.sh
 
 # Make it executable
 chmod +x install-mcp.sh
