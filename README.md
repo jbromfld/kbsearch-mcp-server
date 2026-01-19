@@ -56,10 +56,9 @@ Convert natural language questions into SQL queries against your CI/CD database,
 
 **Example VSCode integration**
 
-| Tool | Preview |
+| CICD tool | RAG tool |
 |------|---------|
-| CICD tool | ![alt text](docs/cicd.png) |
-| Internal knowledge RAG tool | ![alt text](docs/kb.png) |
+| ![alt text](docs/cicd.png) | ![alt text](docs/kb.png) |
 
 ## Quick start
 - Create a Python venv and install deps:

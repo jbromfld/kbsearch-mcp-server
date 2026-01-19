@@ -43,3 +43,5 @@ htmlcov/
 
 .logs/*
 .pids/*
+
+.DS_Store

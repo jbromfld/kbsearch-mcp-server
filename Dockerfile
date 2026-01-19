@@ -1,10 +1,17 @@
 # Use Python 3.11 slim image
 FROM python:3.11-slim
 
+# Prevent debconf and pip warnings during build
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PIP_ROOT_USER_ACTION=ignore
+ENV PIP_NO_WARN_SCRIPT_LOCATION=1
+
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies if needed
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
@@ -13,7 +20,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY server.py .
