@@ -7,7 +7,7 @@ load_dotenv()
 
 RAG_URL = os.getenv("RAG_SERVICE_URL", "http://localhost:8000/query")
 RAG_TIMEOUT = int(os.getenv("RAG_TIMEOUT", "30"))
-RAG_MIN_RELEVANCE = float(os.getenv("RAG_MIN_RELEVANCE", "0.05"))
+RAG_MIN_RELEVANCE = float(os.getenv("RAG_MIN_RELEVANCE", "0.01"))
 
 
 def register(mcp):
@@ -100,17 +100,28 @@ def register(mcp):
             raw_chunks = data.get("chunks", [])
 
             # Filter out low-signal retrievals so irrelevant hits are treated as no results.
-            chunks = [
+            filtered_chunks = [
                 chunk for chunk in raw_chunks
                 if chunk.get("score", 0) >= RAG_MIN_RELEVANCE
             ]
 
-            # If nothing relevant remains, return a clear no-results response.
-            if not chunks:
+            # If backend returned nothing at all, return no-results response.
+            if not raw_chunks:
                 return "No relevant information found in the knowledge base for this query."
 
+            # If filtering removed everything, keep top low-confidence matches.
+            if filtered_chunks:
+                chunks = filtered_chunks
+                low_confidence_note = ""
+            else:
+                chunks = sorted(raw_chunks, key=lambda chunk: chunk.get("score", 0), reverse=True)[:3]
+                low_confidence_note = (
+                    f"Note: no chunks met min relevance {RAG_MIN_RELEVANCE:.3f}. "
+                    "Showing top low-confidence matches.\n\n"
+                )
+
             # Create formatted text for Copilot with content and sources
-            chunks_text = "\n\n".join([
+            chunks_text = low_confidence_note + "\n\n".join([
                 f"{chunk['citation']} {chunk['title']}\n"
                 f"Content:\n{chunk['content']}"
                 for chunk in chunks
