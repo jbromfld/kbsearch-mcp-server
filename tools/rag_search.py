@@ -63,7 +63,7 @@ def register(mcp):
         query: str,
         profile: Optional[str] = None,
         top_k: int = 5,
-        include_sources: bool = False
+        include_sources: bool = True
     ) -> str:
         """Execute a semantic search and retrieve relevant document chunks from the knowledge base.
 
@@ -105,24 +105,15 @@ def register(mcp):
                 if chunk.get("score", 0) >= RAG_MIN_RELEVANCE
             ]
 
-            # If backend returned nothing at all, return no-results response.
-            if not raw_chunks:
+            # If backend returned nothing or nothing meets the relevance threshold, return no-results.
+            if not raw_chunks or not filtered_chunks:
                 return "No relevant information found in the knowledge base for this query."
 
-            # If filtering removed everything, keep top low-confidence matches.
-            if filtered_chunks:
-                chunks = filtered_chunks
-                low_confidence_note = ""
-            else:
-                chunks = sorted(raw_chunks, key=lambda chunk: chunk.get("score", 0), reverse=True)[:3]
-                low_confidence_note = (
-                    f"Note: no chunks met min relevance {RAG_MIN_RELEVANCE:.3f}. "
-                    "Showing top low-confidence matches.\n\n"
-                )
+            chunks = filtered_chunks
 
             # Create formatted text for Copilot with content and sources
-            chunks_text = low_confidence_note + "\n\n".join([
-                f"{chunk['citation']} {chunk['title']}\n"
+            chunks_text = "\n\n".join([
+                f"- {chunk['title']}\n"
                 f"Content:\n{chunk['content']}"
                 for chunk in chunks
             ])
@@ -148,7 +139,7 @@ def register(mcp):
                     }
             
             sources_list = "\n".join([
-                f"{src['citation']} {src['title']}" +
+                f"- {src['title']}" +
                 (f" - {src['url']}" if src['url'] else "") +
                 f" (relevance: {src['score']:.3f})"
                 for src in seen_sources.values()
