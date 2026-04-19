@@ -12,8 +12,8 @@ NC='\033[0m' # No Color
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVICES=(
-    "rag-mcp"
-    "nl2sql-mcp"
+    "rag-service"
+    "nl2sql-service"
     "kbsearch-mcp-server"
 )
 
