@@ -7,6 +7,7 @@ load_dotenv()
 
 RAG_URL = os.getenv("RAG_SERVICE_URL", "http://localhost:8000/query")
 RAG_TIMEOUT = int(os.getenv("RAG_TIMEOUT", "30"))
+RAG_MIN_RELEVANCE = float(os.getenv("RAG_MIN_RELEVANCE", "0.01"))
 
 
 def register(mcp):
@@ -51,9 +52,9 @@ def register(mcp):
 
         How to use the results:
         - Read and synthesize information from the retrieved chunks to answer the user's question
-        - MANDATORY: After your answer, copy the ENTIRE SOURCES section verbatim from the tool output, including all URLs
-        - DO NOT summarize or paraphrase the sources - copy them exactly as provided with full URLs
-        - Use inline citations [1], [2] in your answer that match the source numbers
+        - Use inline citations [1], [2] only for chunks you actually use in your answer
+        - Include full source URLs only when your response contains citations
+        - If you answer from general knowledge, do not include a SOURCES section
         - ALWAYS preserve the Query ID line for potential feedback submission
         - If no relevant chunks are returned (num_chunks=0), explicitly state: "I couldn't find this in the internal knowledge base, so I'll answer from my general knowledge:" before providing your answer
         """
@@ -61,7 +62,8 @@ def register(mcp):
     def search_knowledge_base(
         query: str,
         profile: Optional[str] = None,
-        top_k: int = 5
+        top_k: int = 5,
+        include_sources: bool = True
     ) -> str:
         """Execute a semantic search and retrieve relevant document chunks from the knowledge base.
 
@@ -69,6 +71,7 @@ def register(mcp):
             query: The question to ask
             profile: Optional profile name (default: "default"). Available profiles can be queried from the RAG service.
             top_k: Number of relevant chunks to retrieve (default: 5)
+            include_sources: Include formatted SOURCES block with URLs (default: False)
 
         Returns:
             Formatted string with:
@@ -94,11 +97,23 @@ def register(mcp):
             data = resp.json()
 
             # Format chunks for Copilot to synthesize
-            chunks = data.get("chunks", [])
+            raw_chunks = data.get("chunks", [])
+
+            # Filter out low-signal retrievals so irrelevant hits are treated as no results.
+            filtered_chunks = [
+                chunk for chunk in raw_chunks
+                if chunk.get("score", 0) >= RAG_MIN_RELEVANCE
+            ]
+
+            # If backend returned nothing or nothing meets the relevance threshold, return no-results.
+            if not raw_chunks or not filtered_chunks:
+                return "No relevant information found in the knowledge base for this query."
+
+            chunks = filtered_chunks
 
             # Create formatted text for Copilot with content and sources
             chunks_text = "\n\n".join([
-                f"{chunk['citation']} {chunk['title']}\n"
+                f"- {chunk['title']}\n"
                 f"Content:\n{chunk['content']}"
                 for chunk in chunks
             ])
@@ -124,7 +139,7 @@ def register(mcp):
                     }
             
             sources_list = "\n".join([
-                f"{src['citation']} {src['title']}" +
+                f"- {src['title']}" +
                 (f" - {src['url']}" if src['url'] else "") +
                 f" (relevance: {src['score']:.3f})"
                 for src in seen_sources.values()
@@ -133,23 +148,25 @@ def register(mcp):
             metrics = data.get("metrics", {})
             query_id = data.get("query_id", "")
 
-            # Check if we got any chunks
-            if not chunks:
-                return "No relevant information found in the knowledge base for this query."
-
             # Build response with chunks, sources, and metadata
             response_parts = [
                 "# Retrieved Information",
                 "",
                 chunks_text,
-                "",
-                "---",
-                "# SOURCES",
-                sources_list,
-                "",
                 f"Query ID: {query_id} (use this for feedback)",
-                f"Retrieved {len(chunks)} chunks in {metrics.get('latency_ms', 0):.0f}ms"
+                (
+                    f"Retrieved {len(chunks)} relevant chunks "
+                    f"(from {len(raw_chunks)} total) in {metrics.get('latency_ms', 0):.0f}ms"
+                )
             ]
+
+            if include_sources:
+                response_parts.extend([
+                    "",
+                    "---",
+                    "# SOURCES",
+                    sources_list
+                ])
 
             return "\n".join(response_parts)
         except requests.exceptions.Timeout:

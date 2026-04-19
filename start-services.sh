@@ -124,6 +124,27 @@ reset_db() {
     deactivate
 }
 
+# Function to build a service
+build_service() {
+    local service_name=$1
+    local service_path="${SCRIPT_DIR}/../${service_name}"
+    local compose_file="${service_path}/docker-compose.yml"
+    
+    if [ ! -f "$compose_file" ]; then
+        log_error "docker-compose.yml not found for $service_name"
+        return 1
+    fi
+    
+    log_info "Building $service_name..."
+    
+    if docker-compose -f "$compose_file" build --no-cache; then
+        log_info "✓ $service_name built successfully"
+    else
+        log_error "Failed to build $service_name"
+        return 1
+    fi
+}
+
 # Function to start a service
 start_service() {
     local service_name=$1
@@ -204,6 +225,17 @@ case "$COMMAND" in
         sleep 2
         RESET_DB=false
         ;;
+    build)
+        log_info "Rebuilding all services..."
+        for service in "${SERVICES[@]}"; do
+            build_service "$service" || {
+                log_error "Failed to build $service"
+                exit 1
+            }
+        done
+        log_info "All services rebuilt. Use '$0 start' to start them."
+        exit 0
+        ;;
     status)
         show_status
         exit 0
@@ -216,6 +248,7 @@ case "$COMMAND" in
         echo "  reset     - Reset databases and start services"
         echo "  stop      - Stop all services"
         echo "  restart   - Restart all services"
+        echo "  build     - Rebuild all service containers (no-cache)"
         echo "  status    - Show status of all services"
         echo "  help      - Show this help message"
         exit 0
